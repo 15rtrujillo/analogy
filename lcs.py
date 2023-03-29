@@ -1,5 +1,5 @@
 def compare_text(text1: str, text2: str) -> float:
-    """Compares to strings. Returns the similarity as a percent"""
+    """Compares two strings. Returns the similarity as a decimal percent"""
 
     # Strip whitespace
     text1 = "".join(text1.split())
