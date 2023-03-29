@@ -1,4 +1,5 @@
 import docx_extract
+import lcs
 import os
 import shutil
 import tkinter.filedialog as tkd
@@ -59,8 +60,9 @@ def main():
 
             # Compare the file contents with the assignments that have already been read in
             for assignment in assignments:
-                similarity = compare_text(file_contents, assignment[ASSIGNMENT_CONTENTS])
-                if similarity > 0.50:
+                
+                similarity = lcs.compare_text(file_contents, assignment[ASSIGNMENT_CONTENTS])
+                if similarity > 0.75:
                     file_tuple[SIMILARITIES][assignment[STUDENT_FILE]] = similarity
 
             assignments.append(file_tuple)
@@ -74,12 +76,27 @@ def main():
     # Print out the list of similar assignments
     print()
     printed = False
+    printed_students: list[str] = list()
+    assignments.reverse()
     for assignment in assignments:
-        if len(assignment[SIMILARITIES]) > 0:
+        # Grab relevent data from the tuple
+        student_file = assignment[STUDENT_FILE]
+        similarities = assignment[SIMILARITIES]
+
+        # If this student has already matched with another assignment, we don't need to print out an individual report.
+        if student_file in printed_students:
+            continue
+
+        # Check if there are similar assignments
+        if len(similarities) > 0:
+            # Print out the file name
             printed = True
-            print(assignment[STUDENT_FILE])
-            for similar in assignment[SIMILARITIES]:
-                print(f"\t{similar}: {round(assignment[SIMILARITIES][similar] * 100, 2)}% match")
+            print(student_file)
+
+            # Print out all the similar files and their match %
+            for similar_file_name in similarities:
+                printed_students.append(similar_file_name)
+                print(f"\t{similar_file_name}: {round(similarities[similar_file_name] * 100, 2)}% match")
             print()
 
     # Hurray! No cheaters
@@ -88,7 +105,8 @@ def main():
 
 
 def compare_text(text1: str, text2: str) -> float:
-    """Compares to strings. Returns the percent of tokens (words) that are the same"""
+    """Compares to strings. Returns the percent of tokens (words) that are the same
+    This is no longer used"""
     # Split the text out into tokens
     tokens1 = text1.split()
     tokens2 = text2.split()
