@@ -27,8 +27,8 @@ def main():
         zip_ref.extractall(extract_dir)
 
     # Grab all the assignment files from the unextracted directory
-    assignment_files: str = list()
-    for root, dirs, files in os.walk(extract_dir):
+    assignment_files: list[str] = list()
+    for root, _, files in os.walk(extract_dir):
         for name in files:
             assignment_files.append(os.path.join(root, name))
     
@@ -41,7 +41,7 @@ def main():
     for file_name in assignment_files:
         with open(file_name, "r") as file:
             short_file_name = os.path.basename(file_name)
-            print("Checking", short_file_name)
+            print(f"Checking {short_file_name}...", end="")
 
             # Read in the entire contents of a file
             # Check for Word docx
@@ -54,16 +54,16 @@ def main():
                 except UnicodeDecodeError:
                     print("Error reading file. Skipping")
                     continue
-
+            print()
             # Add the student name and the context of the file to the list
-            file_tuple = (short_file_name, file_contents, dict())
+            file_tuple = (short_file_name.split("_")[0], file_contents, dict())
 
             # Compare the file contents with the assignments that have already been read in
             for assignment in assignments:
-                
                 similarity = lcs.compare_text(file_contents, assignment[ASSIGNMENT_CONTENTS])
-                if similarity > 0.75:
-                    file_tuple[SIMILARITIES][assignment[STUDENT_FILE]] = similarity
+
+                file_tuple[SIMILARITIES][assignment[STUDENT_FILE]] = similarity
+                assignment[SIMILARITIES][file_tuple[STUDENT_FILE]] = similarity
 
             assignments.append(file_tuple)
 
@@ -71,37 +71,44 @@ def main():
     try:
         shutil.rmtree(extract_dir)
     except Exception as e:
-        print("You'll have to delete the folder yourself. Error Message: ", e)
+        print("You'll have to delete the  folder yourself. Error Message: ", e)
 
     # Print out the list of similar assignments
-    print()
-    printed = False
-    printed_students: list[str] = list()
-    assignments.reverse()
-    for assignment in assignments:
-        # Grab relevent data from the tuple
-        student_file = assignment[STUDENT_FILE]
-        similarities = assignment[SIMILARITIES]
-
-        # If this student has already matched with another assignment, we don't need to print out an individual report.
-        if student_file in printed_students:
+    while True:
+        print()
+        try:
+            print("Type a similarity-percent threshold to generate a report for or \"exit\" to exit.")
+            percent = input(": ")
+            percent = float(percent) / 100
+        except ValueError:
+            if percent.lower() == "exit":
+                break
+            print("Please enter a number")
             continue
+        printed = False
+        for assignment in assignments:
+            # Grab relevent data from the tuple
+            student_file = assignment[STUDENT_FILE]
+            similarities = assignment[SIMILARITIES]
 
-        # Check if there are similar assignments
-        if len(similarities) > 0:
-            # Print out the file name
-            printed = True
-            print(student_file)
+            printed_student_file = False
 
             # Print out all the similar files and their match %
             for similar_file_name in similarities:
-                printed_students.append(similar_file_name)
-                print(f"\t{similar_file_name}: {round(similarities[similar_file_name] * 100, 2)}% match")
-            print()
+                if similarities[similar_file_name] >= percent:
+                    # We only want to print this once
+                    if not printed_student_file:
+                        print(student_file)
+                        printed_student_file = True
 
-    # Hurray! No cheaters
-    if not printed:
-        print("No similarities found in files")
+                    printed = True
+                    print(f"\t{similar_file_name}: {round(similarities[similar_file_name] * 100, 2)}% match")
+
+        # Hurray! No cheaters
+        if not printed:
+            print("No similarities found in files")
+
+        input("Press ENTER to continue...")
 
 
 def compare_text(text1: str, text2: str) -> float:
