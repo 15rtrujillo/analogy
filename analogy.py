@@ -10,6 +10,24 @@ STUDENT_FILE = 0
 ASSIGNMENT_CONTENTS = 1
 SIMILARITIES = 2
 
+class Submission:
+    def __init__(self, student_name: str, submission_contents: str):
+        self.student_name = student_name
+        self.submission_contents = submission_contents
+        self.similarities: dict[str, tuple[float, list[list[int]]]]= dict()
+
+    def get_similar_percent(self, student_name: str) -> float:
+        """Get the similarity between this submission and the provided one
+        student_name: The name of the student to retrieve the similarity percent for"""
+        if student_name not in self.similarities.keys():
+            raise KeyError(f"{student_name} is not a valid key")
+        return self.similarities[student_name][0]
+    
+    def get_lcs_array(self, student_name: str) -> list[list[int]]:
+        if student_name not in self.similarities.keys():
+            raise KeyError(f"{student_name} is not a valid key")
+        return self.similarities[student_name][1]
+        
 
 def get_submissions_file() -> str:
     """Shows the File Select Dialog and returns the path to the file selected by the user"""
@@ -94,7 +112,7 @@ def main():
     assignment_files = get_assignment_files(extract_dir)
     
     # List of tuples of (student, contents, dictionary(student, similarity))
-    assignments: list[tuple[str, str, dict[str, float]]] = list()
+    assignments: list[Submission] = list()
 
     for file_name in assignment_files:
         short_file_name = get_file_name(file_name)
@@ -108,16 +126,16 @@ def main():
 
         print()
         # Add the student name and the context of the file to the list
-        file_tuple = (short_file_name.split("_")[0], file_contents, dict())
+        submission = Submission(short_file_name.split("_")[0], file_contents)
 
         # Compare the file contents with the assignments that have already been read in
         for assignment in assignments:
-            similarity = lcs.compare_text(file_contents, assignment[ASSIGNMENT_CONTENTS])
+            similarity, c = lcs.compare_text(file_contents, assignment.submission_contents)
 
-            file_tuple[SIMILARITIES][assignment[STUDENT_FILE]] = similarity
-            assignment[SIMILARITIES][file_tuple[STUDENT_FILE]] = similarity
+            submission.similarities[assignment.student_name] = (similarity, c)
+            assignment.similarities[submission.student_name] = (similarity, c)
 
-        assignments.append(file_tuple)
+        assignments.append(submission)
 
     remove_directory(extract_dir)
 
@@ -136,21 +154,21 @@ def main():
         printed = False
         for assignment in assignments:
             # Grab relevent data from the tuple
-            student_file = assignment[STUDENT_FILE]
-            similarities = assignment[SIMILARITIES]
+            student_file = assignment.student_name
+            similarities = assignment.similarities
 
             printed_student_file = False
 
             # Print out all the similar files and their match %
             for similar_file_name in similarities:
-                if similarities[similar_file_name] >= percent:
+                if assignment.get_similar_percent(similar_file_name) >= percent:
                     # We only want to print this once
                     if not printed_student_file:
                         print(student_file)
                         printed_student_file = True
 
                     printed = True
-                    print(f"\t{similar_file_name}: {round(similarities[similar_file_name] * 100, 2)}% match")
+                    print(f"\t{similar_file_name}: {round(assignment.get_similar_percent(similar_file_name) * 100, 2)}% match")
 
         # Hurray! No cheaters
         if not printed:
