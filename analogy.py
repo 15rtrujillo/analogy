@@ -6,72 +6,120 @@ import tkinter.filedialog as tkd
 import zipfile
 
 
-def main():
-    # Get a zip file from the user containing submissions
-    zip_file_path = tkd.askopenfilename(filetypes=[('Zipped Files', '*.zip')])
+STUDENT_FILE = 0
+ASSIGNMENT_CONTENTS = 1
+SIMILARITIES = 2
 
-    if zip_file_path == "":
-        print("No file provided. Exiting...")
-        exit()
 
+def get_submissions_file() -> str:
+    """Shows the File Select Dialog and returns the path to the file selected by the user"""
+    return tkd.askopenfilename(filetypes=[('Zipped Files', '*.zip')])
+
+
+def extract_files(zip_file_path) -> str:
+    """Extract all the files in zip file to a directory of the same name. Returns the path to that directory
+    zip_file_path: The path to the zip file"""
     # Get the name of the file itself
     zip_file_name = os.path.basename(zip_file_path)
 
     # Get the directory in which the zip file is located.
     zip_file_dir = os.path.abspath(os.path.dirname(zip_file_path))
 
-    # Extract the components of the zip file to a folder with the same name in the same directory
-    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-        print("Extracting zip file", zip_file_name, "to", zip_file_dir)
-        extract_dir = os.path.abspath(os.path.join(zip_file_dir, zip_file_name[:-4] + "/"))
-        zip_ref.extractall(extract_dir)
+    # Get a path to the new directory where we want to extract all the files
+    extract_dir = os.path.abspath(os.path.join(zip_file_dir, zip_file_name[:-4] + "/"))
 
-    # Grab all the assignment files from the unextracted directory
+    # Extract the components of the zip file to a folder with the same name in the same directory
+    try:
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+            print("Extracting zip file", zip_file_name, "to", zip_file_dir)
+            zip_ref.extractall(extract_dir)
+        return extract_dir
+    except:
+        return ""
+    
+
+def get_assignment_files(path_to_assignments: str) -> list[str]:
+    """Grab all the recently-extracted assignment files in the directory"""
     assignment_files: list[str] = list()
-    for root, _, files in os.walk(extract_dir):
+    for root, _, files in os.walk(path_to_assignments):
         for name in files:
             assignment_files.append(os.path.join(root, name))
+
+    return assignment_files
+
+
+def get_file_name(path: str) -> str:
+    """Returns the name of a file given the path to a file"""
+    return os.path.basename(path)
+
+
+def get_file_contents(path_to_file: str) -> str:
+    """Return the contents of a text or docx file"""
+    # Check for word docx
+    _, extension = os.path.splitext(path_to_file)
+    if extension == ".docx":
+        file_contents = docx_extract.get_docx_text(path_to_file)
+    else:
+        try:
+            with open(path_to_file, "r") as file:
+                file_contents = file.read()
+        except UnicodeDecodeError:
+            return "UnicodeDecodeError"
+    return file_contents
+
+
+def remove_directory(directory: str):
+    # Try to remove the folder we created earlier
+    try:
+        shutil.rmtree(directory)
+    except Exception as e:
+        print("You'll have to delete the folder yourself. Error Message: ", e)
+
+
+def main():
+    # Get a zip file from the user containing submissions
+    zip_file_path = get_submissions_file()
+
+    if zip_file_path == "":
+        print("No file provided. Exiting...")
+        exit()
+
+    extract_dir = extract_files(zip_file_path)
+
+    if extract_dir == "":
+        print("There was an error opening the zip file and extracting its contents. Exiting...")
+        exit(1)
+
+    # Grab all the assignment files from the unextracted directory
+    assignment_files = get_assignment_files(extract_dir)
     
     # List of tuples of (student, contents, dictionary(student, similarity))
-    STUDENT_FILE = 0
-    ASSIGNMENT_CONTENTS = 1
-    SIMILARITIES = 2
     assignments: list[tuple[str, str, dict[str, float]]] = list()
 
     for file_name in assignment_files:
-        with open(file_name, "r") as file:
-            short_file_name = os.path.basename(file_name)
-            print(f"Checking {short_file_name}...", end="")
+        short_file_name = get_file_name(file_name)
+        print(f"Checking {short_file_name}...", end="")
 
-            # Read in the entire contents of a file
-            # Check for Word docx
-            _, extension = os.path.splitext(file_name)
-            if extension == ".docx":
-                file_contents = docx_extract.get_docx_text(file_name)
-            else:
-                try:
-                    file_contents = file.read()
-                except UnicodeDecodeError:
-                    print("Error reading file. Skipping")
-                    continue
-            print()
-            # Add the student name and the context of the file to the list
-            file_tuple = (short_file_name.split("_")[0], file_contents, dict())
+        # Read in the entire contents of a file
+        file_contents = get_file_contents(file_name)
+        if file_contents == "UnicodeDecodeError":
+            print("Error reading file, skipping")
+            continue
 
-            # Compare the file contents with the assignments that have already been read in
-            for assignment in assignments:
-                similarity = lcs.compare_text(file_contents, assignment[ASSIGNMENT_CONTENTS])
+        print()
+        # Add the student name and the context of the file to the list
+        file_tuple = (short_file_name.split("_")[0], file_contents, dict())
 
-                file_tuple[SIMILARITIES][assignment[STUDENT_FILE]] = similarity
-                assignment[SIMILARITIES][file_tuple[STUDENT_FILE]] = similarity
+        # Compare the file contents with the assignments that have already been read in
+        for assignment in assignments:
+            similarity = lcs.compare_text(file_contents, assignment[ASSIGNMENT_CONTENTS])
 
-            assignments.append(file_tuple)
+            file_tuple[SIMILARITIES][assignment[STUDENT_FILE]] = similarity
+            assignment[SIMILARITIES][file_tuple[STUDENT_FILE]] = similarity
 
-    # Try to remove the folder we created earlier
-    try:
-        shutil.rmtree(extract_dir)
-    except Exception as e:
-        print("You'll have to delete the  folder yourself. Error Message: ", e)
+        assignments.append(file_tuple)
+
+    remove_directory(extract_dir)
 
     # Print out the list of similar assignments
     while True:
