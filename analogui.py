@@ -181,7 +181,8 @@ class AnalogyGUI:
         self.treeview.column("#0", width=10)
         self.treeview.heading("#1", text="Student Name")
         self.treeview.heading("#2", text="Similarity")
-        self.treeview.bind("<Double-1>", self.display_diff)
+        # This doesn't work well at all
+        # self.treeview.bind("<Double-1>", self.display_diff)
         self.treeview.grid(row=row, column=0)
         row += 1
 

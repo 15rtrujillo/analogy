@@ -51,7 +51,7 @@ def lcs(string1: str | list[str], string2: str | list[str]) -> tuple[int, list[l
     return c[m][n], c
 
 
-def get_diff(c: list[list[int]], string1: str | list[str], string2: str | list[str], i: int = 0, j: int = 0) -> str:
+def get_diff(c: list[list[int]], string1: str | list[str], string2: str | list[str], i: int, j: int) -> str:
     diff = ""
     if i >= 0 and j >= 0 and string1[i] == string2[j]:
         diff += get_diff(c, string1, string2, i-1, j-1)
