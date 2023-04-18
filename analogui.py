@@ -86,7 +86,7 @@ class AnalogyProgress:
                     similarity, c = lcs.compare_words(file_contents, assignment.submission_contents)
 
                 submission.similarities[assignment.student_name] = (similarity, c)
-                assignment.similarities[submission.student_name] = (similarity, c)
+                assignment.similarities[submission.student_name] = (similarity, lcs.transpose_c(c))
 
                 # Update the file progress bar
                 self.progress_file.configure(value=j+1)
@@ -182,7 +182,7 @@ class AnalogyGUI:
         self.treeview.heading("#1", text="Student Name")
         self.treeview.heading("#2", text="Similarity")
         # This doesn't work well at all
-        # self.treeview.bind("<Double-1>", self.display_diff)
+        self.treeview.bind("<Double-1>", self.display_diff)
         self.treeview.grid(row=row, column=0)
         row += 1
 
@@ -278,7 +278,10 @@ class AnalogyGUI:
                 self.treeview.delete(student_file)
 
     def display_diff(self, event: tk.Event):
+        # Identify the item that was clicked on at the mouse location
         item_id = self.treeview.identify("item", event.x, event.y)
+
+        # If it doesn't have a parent, we've clicked on a top-level item and return
         parent_id = self.treeview.parent(item_id)
         if parent_id == "":
             return
@@ -286,12 +289,18 @@ class AnalogyGUI:
         sub1content = ""
         sub2content = ""
         c_array = None
+
+        # Get the name of the student from the treeview item
         student_name = self.treeview.item(item_id, "values")[0]
+
+        # Grab the submission contents and the c array using the parent of the item that was clicked on
         for submission in self.submissions:
             if submission.student_name == parent_id:
-                sub1content = submission.submission_contents
                 c_array = submission.get_lcs_array(student_name)
+                sub1content = submission.submission_contents
                 break
+        
+        # Now grab the submission of the actual item that was clicked on
         for submission in self.submissions:
             if submission.student_name == student_name:
                 sub2content = submission.submission_contents

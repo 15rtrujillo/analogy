@@ -49,21 +49,23 @@ class DifferenceWindow:
 
     def display_diff(self, comparison_type: Literal["characters", "words"]):
         if comparison_type == "characters":
-            string1 = "".join(self.submission1_contents.split())
-            string2 = "".join(self.submission2_contents.split())
+            # string1 = "".join(self.submission1_contents.split())
+            # string2 = "".join(self.submission2_contents.split())
+            string1 = self.submission1_contents
+            string2 = self.submission2_contents
         elif comparison_type == "words":
-            string1 = self.submission1_contents.split()
-            string2 = self.submission2_contents.split()
+            string1 = self.submission1_contents.split(" ")
+            string2 = self.submission2_contents.split(" ")
         else:
             raise ValueError
         
         i = len(string1) - 1
         j = len(string2) - 1
         sub1diff = lcs.get_diff(self.submissions_c, string1, string2, i, j)
-        # sub2diff = lcs.get_diff(self.submissions_c, string2, string1, j, i)
+        sub2diff = lcs.get_diff(lcs.transpose_c(self.submissions_c), string2, string1, j, i)
         
         self.text_submission1.insert("1.0", sub1diff)
-        # self.text_submission2.insert("1.0", sub2diff)
+        self.text_submission2.insert("1.0", sub2diff)
 
 
 if __name__ == "__main__":
