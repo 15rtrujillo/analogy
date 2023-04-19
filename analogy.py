@@ -133,7 +133,7 @@ def main():
             similarity, c = lcs.compare_text(file_contents, assignment.submission_contents)
 
             submission.similarities[assignment.student_name] = (similarity, c)
-            assignment.similarities[submission.student_name] = (similarity, c)
+            assignment.similarities[submission.student_name] = (similarity, lcs.transpose_c(c))
 
         assignments.append(submission)
 
