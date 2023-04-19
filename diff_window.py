@@ -59,10 +59,8 @@ class DifferenceWindow:
         else:
             raise ValueError
         
-        i = len(string1) - 1
-        j = len(string2) - 1
-        sub1diff = lcs.get_diff(self.submissions_c, string1, string2, i, j)
-        sub2diff = lcs.get_diff(lcs.transpose_c(self.submissions_c), string2, string1, j, i)
+        sub1diff = lcs.get_diff(self.submissions_c, string1, string2)
+        sub2diff = lcs.get_diff(lcs.transpose_c(self.submissions_c), string2, string1)
         
         self.text_submission1.insert("1.0", sub1diff)
         self.text_submission2.insert("1.0", sub2diff)

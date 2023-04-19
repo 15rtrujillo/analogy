@@ -25,14 +25,9 @@ def lcs(string1: str | list[str], string2: str | list[str]) -> tuple[int, list[l
     """Get the longest common subsequence length between two strings"""
     m = len(string1)
     n = len(string2)
-    c: list[list[int]] = list()
 
-    # Fill in the 2D array
-    # The array needs to be m + 1 x n + 1
-    for i in range(m + 1):
-        c.append(list())
-        for j in range(n + 1):
-            c[i].append(0)
+    # Create a 2-dimensional array using the string sizes for dimensions
+    c: list[list[int]] = [[0] * (n + 1) for _ in range(m + 1)]
 
     for i in range(m + 1):
         c[i][0] = 0
@@ -54,12 +49,7 @@ def transpose_c(c: list[list[int]]) -> list[list[int]]:
     x = len(c[0])
     y = len(c)
 
-    new_c: list[list[int]] = list()
-
-    for i in range(x):
-        new_c.append(list())
-        for _ in range(y):
-            new_c[i].append(0)
+    new_c: list[list[int]] = [[0] * y for _ in range(x)]
 
     for i in range(y):
         for j in range(x):
@@ -68,23 +58,28 @@ def transpose_c(c: list[list[int]]) -> list[list[int]]:
     return new_c
 
 
-def get_diff(c: list[list[int]], string1: str | list[str], string2: str | list[str], i: int, j: int) -> str:
-    diff = ""
-    if i >= 0 and j >= 0 and string1[i] == string2[j]:
-        diff += get_diff(c, string1, string2, i-1, j-1)
-        diff += "" + string1[i]
-    elif j > 0 and (i == 0 or c[i][j-1] >= c[i-1][j]):
-        diff += get_diff(c, string1, string2, i, j-1)
-        diff += "+" + string2[j]
-    elif i > 0 and (j == 0 or c[i][j-1] < c[i-1][j]):
-        diff += get_diff(c, string1, string2, i-1, j)
-        diff += "-" + string1[i]
-    else:
-        diff += ""
-    return diff
+def get_diff(c: list[list[int]], string1: str | list[str], string2: str | list[str]) -> str:
+    i = len(string1) - 1
+    j = len(string2) - 1
+    diff: list[str] = list()
+    while i >= 0 and j >= 0:
+        if string1[i] == string2[j]:
+            diff.append(string1[i])
+            i -= 1
+            j -= 1
+        elif j > 0 and (i == 0 or c[i][j-1] >= c[i-1][j]):
+            diff.append("+" + string2[j])
+            j -= 1
+        elif i > 0 and (j == 0 or c[i][j-1] < c[i-1][j]):
+            diff.append("-" + string1[i])
+            i -= 1
+        else:
+            break
+    diff.reverse()
+    return " ".join(diff)
 
 
 if __name__ == "__main__":
     diff, c = compare_text("ABCD\n", "ACBAD")
     print(diff)
-    print(get_diff(c, "ABCD\n", "ACBAD", 4, 4))
+    print(get_diff(c, "ABCD\n", "ACBAD"))

@@ -23,7 +23,7 @@ class AnalogyProgress:
         # Window stuff
         self.root = tk.Toplevel(parent)
         self.root.title("Comparing Submissions...")
-        self.root.overrideredirect(1)
+        # self.root.overrideredirect(1)
         # self.root.bind("<Visibility>", lambda event: self.compare())
 
         row = 0
