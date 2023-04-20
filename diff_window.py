@@ -1,6 +1,7 @@
 from typing import Literal
 
 import lcs
+import re
 import tkinter as tk
 import tkinter.ttk as ttk
 
@@ -61,10 +62,23 @@ class DifferenceWindow:
         
         sub1diff = lcs.get_diff(self.submissions_c, string1, string2)
         sub2diff = lcs.get_diff(lcs.transpose_c(self.submissions_c), string2, string1)
-        
+
         self.text_submission1.insert("1.0", sub1diff)
         self.text_submission2.insert("1.0", sub2diff)
 
+    def add_to_textbox(self, text: str, textbox: tk.Text):
+        matches = [match for match in re.finditer("[@][g|r][@]", text)]
+        match_num = 0
+        char_index = 0
+        while match_num < len(matches):
+            textbox.insert(f"1.0 + {char_index} chars", text[char_index:match.start()])
+            char_index += match.span()[1] - match.span()[0]
+            
+
 
 if __name__ == "__main__":
-    window = DifferenceWindow(None, "Hi", "Hi", "hi", "hi", list())
+    main_window = tk.Tk()
+    window = DifferenceWindow(main_window, "Hi", "Hi","hi", "hi", list())
+    window.add_to_textbox("H@g@i@g@", window.text_submission1)
+    window.add_to_textbox("H@r@i@r@", window.text_submission2)
+    main_window.mainloop()

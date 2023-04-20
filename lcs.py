@@ -68,10 +68,10 @@ def get_diff(c: list[list[int]], string1: str | list[str], string2: str | list[s
             i -= 1
             j -= 1
         elif j > 0 and (i == 0 or c[i][j-1] >= c[i-1][j]):
-            diff.append("+" + string2[j])
+            diff.append("@g@+" + string2[j] + "@g@")
             j -= 1
         elif i > 0 and (j == 0 or c[i][j-1] < c[i-1][j]):
-            diff.append("-" + string1[i])
+            diff.append("@r@-" + string1[i] + "@r@")
             i -= 1
         else:
             break
