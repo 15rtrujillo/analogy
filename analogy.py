@@ -1,5 +1,5 @@
 import docx_extract
-import lcs
+import json
 import os
 import shutil
 import tkinter.filedialog as tkd
@@ -11,22 +11,30 @@ ASSIGNMENT_CONTENTS = 1
 SIMILARITIES = 2
 
 class Submission:
-    def __init__(self, student_name: str, submission_contents: str):
+    def __init__(self, student_name: str, submission_file_path: str):
         self.student_name = student_name
-        self.submission_contents = submission_contents
-        self.similarities: dict[str, tuple[float, list[list[int]]]]= dict()
+        self.submission_file_path = submission_file_path
+        self.similarities: dict[str, float] = dict()
+        self.json_file_path = os.path.abspath(os.path.dirname(self.submission_file_path))
 
     def get_similar_percent(self, student_name: str) -> float:
         """Get the similarity between this submission and the provided one
         student_name: The name of the student to retrieve the similarity percent for"""
         if student_name not in self.similarities.keys():
             raise KeyError(f"{student_name} is not a valid key")
-        return self.similarities[student_name][0]
+        return self.similarities[student_name]
     
     def get_lcs_array(self, student_name: str) -> list[list[int]]:
-        if student_name not in self.similarities.keys():
+        json_file_name = os.path.abspath(os.path.join(self.json_file_path, f"{self.student_name}-{student_name}.json"))
+        if not os.path.isfile(json_file_name):
             raise KeyError(f"{student_name} is not a valid key")
-        return self.similarities[student_name][1]
+        with open(json_file_name, "r") as json_file:
+            return json.load(json_file)
+    
+    def set_lcs_array(self, student_name: str, c: list[list[int]]):
+        json_file_name = os.path.abspath(os.path.join(self.json_file_path, f"{self.student_name}-{student_name}.json"))
+        with open(json_file_name, "w") as json_file:
+            json.dump(c, json_file)
         
 
 def get_submissions_file() -> str:
@@ -92,112 +100,3 @@ def remove_directory(directory: str):
         shutil.rmtree(directory)
     except Exception as e:
         print("You'll have to delete the folder yourself. Error Message: ", e)
-
-
-def main():
-    # Get a zip file from the user containing submissions
-    zip_file_path = get_submissions_file()
-
-    if zip_file_path == "":
-        print("No file provided. Exiting...")
-        exit()
-
-    extract_dir = extract_files(zip_file_path)
-
-    if extract_dir == "":
-        print("There was an error opening the zip file and extracting its contents. Exiting...")
-        exit(1)
-
-    # Grab all the assignment files from the unextracted directory
-    assignment_files = get_assignment_files(extract_dir)
-    
-    # List of tuples of (student, contents, dictionary(student, similarity))
-    assignments: list[Submission] = list()
-
-    for file_name in assignment_files:
-        short_file_name = get_file_name(file_name)
-        print(f"Checking {short_file_name}...", end="")
-
-        # Read in the entire contents of a file
-        file_contents = get_file_contents(file_name)
-        if file_contents == "UnicodeDecodeError":
-            print("Error reading file, skipping")
-            continue
-
-        print()
-        # Add the student name and the context of the file to the list
-        submission = Submission(short_file_name.split("_")[0], file_contents)
-
-        # Compare the file contents with the assignments that have already been read in
-        for assignment in assignments:
-            similarity, c = lcs.compare_text(file_contents, assignment.submission_contents)
-
-            submission.similarities[assignment.student_name] = (similarity, c)
-            assignment.similarities[submission.student_name] = (similarity, lcs.transpose_c(c))
-
-        assignments.append(submission)
-
-    remove_directory(extract_dir)
-
-    # Print out the list of similar assignments
-    while True:
-        print()
-        try:
-            print("Type a similarity-percent threshold to generate a report for or \"exit\" to exit.")
-            percent = input(": ")
-            percent = float(percent) / 100
-        except ValueError:
-            if percent.lower() == "exit":
-                break
-            print("Please enter a number")
-            continue
-        printed = False
-        for assignment in assignments:
-            # Grab relevent data from the tuple
-            student_file = assignment.student_name
-            similarities = assignment.similarities
-
-            printed_student_file = False
-
-            # Print out all the similar files and their match %
-            for similar_file_name in similarities:
-                if assignment.get_similar_percent(similar_file_name) >= percent:
-                    # We only want to print this once
-                    if not printed_student_file:
-                        print(student_file)
-                        printed_student_file = True
-
-                    printed = True
-                    print(f"\t{similar_file_name}: {round(assignment.get_similar_percent(similar_file_name) * 100, 2)}% match")
-
-        # Hurray! No cheaters
-        if not printed:
-            print("No similarities found in files")
-
-        input("Press ENTER to continue...")
-
-
-def compare_text(text1: str, text2: str) -> float:
-    """Compares to strings. Returns the percent of tokens (words) that are the same
-    This is no longer used"""
-    # Split the text out into tokens
-    tokens1 = text1.split()
-    tokens2 = text2.split()
-
-    # Compare and keep track of similar tokens
-    similar = 0
-
-    # We only want to loop over the shortest list of tokens
-    min_tokens = min(len(tokens1), len(tokens2))
-
-    for i in range(min_tokens):
-        if tokens1[i].lower() == tokens2[i].lower():
-            similar += 1
-
-    # Return a percent of how many tokens were similar
-    # This is probably scuffed
-    return similar / max(len(tokens1), len(tokens2))
-
-
-if __name__ == "__main__":
-    main()

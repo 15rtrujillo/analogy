@@ -66,7 +66,7 @@ class AnalogyProgress:
 
             # Add the student name and the context of the file to the list
             student_name = short_file_name.split("_")[0] 
-            submission = analogy.Submission(student_name, file_contents)
+            submission = analogy.Submission(student_name, file_name)
 
             if file_contents == "UnicodeDecodeError":
                 self.submissions.append(submission)
@@ -81,12 +81,14 @@ class AnalogyProgress:
                 self.label_file_progress.configure(text=f"Comparing {student_name} and {assignment.student_name}...")
 
                 if self.comparison_method == "characters":
-                    similarity, c = lcs.compare_text(file_contents, assignment.submission_contents)
+                    similarity, c = lcs.compare_text(file_contents, analogy.get_file_contents(assignment.submission_file_path))
                 elif self.comparison_method == "words":
-                    similarity, c = lcs.compare_words(file_contents, assignment.submission_contents)
+                    similarity, c = lcs.compare_words(file_contents, analogy.get_file_contents(assignment.submission_file_path))
 
-                submission.similarities[assignment.student_name] = (similarity, c)
-                assignment.similarities[submission.student_name] = (similarity, lcs.transpose_c(c))
+                submission.similarities[assignment.student_name] = similarity
+                submission.set_lcs_array(assignment.student_name, c)
+                assignment.similarities[submission.student_name] = similarity
+                assignment.set_lcs_array(submission.student_name, lcs.transpose_c(c))
 
                 # Update the file progress bar
                 self.progress_file.configure(value=j+1)
@@ -97,7 +99,6 @@ class AnalogyProgress:
             self.root.update()
 
         self.root.destroy()
-        analogy.remove_directory(self.submissions_directory)
 
 
 class AnalogyGUI:
@@ -221,6 +222,10 @@ class AnalogyGUI:
             self.populate_treeview()
             return
         
+        # Try to remove the old directory
+        if os.path.isdir(self.submissions_directory):
+            analogy.remove_directory(self.submissions_directory)
+
         # Set the submission file to what's in the entry box
         self.submissions_file = self.entry_file_select.get()
 
@@ -267,7 +272,7 @@ class AnalogyGUI:
             student_file = submission.student_name
             similarities = submission.similarities
 
-            if submission.submission_contents == "UnicodeDecodeError":
+            if submission.submission_file_path == "UnicodeDecodeError":
                 self.treeview.insert("", "end", student_file, values=[student_file, "Could not read file contents"])
             else:
                 self.treeview.insert("", "end", student_file, values=[student_file])
@@ -301,13 +306,13 @@ class AnalogyGUI:
         for submission in self.submissions:
             if submission.student_name == parent_id:
                 c_array = submission.get_lcs_array(student_name)
-                sub1content = submission.submission_contents
+                sub1content = analogy.get_file_contents(submission.submission_file_path)
                 break
         
         # Now grab the submission of the actual item that was clicked on
         for submission in self.submissions:
             if submission.student_name == student_name:
-                sub2content = submission.submission_contents
+                sub2content = analogy.get_file_contents(submission.submission_file_path)
                 break
 
         diff_window = DifferenceWindow(self.root, parent_id, student_name, sub1content, sub2content, c_array)
