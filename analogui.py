@@ -173,6 +173,10 @@ class AnalogyGUI:
         self.label_percent_sign = tk.Label(self.frame_percent, text="%")
         self.label_percent_sign.grid(row=0, column=2)
 
+        self.label_generate_report = tk.Label(self.root, text="4. Click the following button to generate a report with the above options.\nChanging your selection for 1 or 2 will require the submissions to be re-compared.\nChanging your selection for the similarity-percent threshold (3) will regenerate results instantly and does not require re-comparison.")
+        self.label_generate_report.grid(row=row, column=0)
+        row += 1
+
         self.button_generate_report = tk.Button(self.root, text="Generate Report", command=self.generate_report)
         self.button_generate_report.grid(row=row, column=0)
         row += 1
