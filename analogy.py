@@ -37,9 +37,9 @@ class Submission:
         
         with open(c_file_name, "rb") as c_file:
             c: list[list[int]] = list()
-            rows, cols = struct.unpack("ii", c_file.read(4 * 2))
+            rows, cols = struct.unpack("HH", c_file.read(2 * 2))
             for _ in range(rows):
-                row = struct.unpack("i" * cols, c_file.read(4 * cols))
+                row = struct.unpack("H" * cols, c_file.read(2 * cols))
                 c.append(row)
             
             return c if not transpose else lcs.transpose_c(c)
@@ -48,11 +48,11 @@ class Submission:
         c_file_name = os.path.abspath(os.path.join(self.c_file_path, f"{self.student_name}-{student_name}.cmp"))
         with open(c_file_name, "wb") as c_file:
             # Store the dimensions of the array
-            c_file.write(struct.pack("ii", len(c), len(c[0])))
+            c_file.write(struct.pack("HH", len(c), len(c[0])))
 
             for row in c:
                 # Pack the row into the file.
-                c_file.write(struct.pack('i' * len(row), *row))
+                c_file.write(struct.pack('H' * len(row), *row))
         
 
 def get_submissions_file() -> str:
