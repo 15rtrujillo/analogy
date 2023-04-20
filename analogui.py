@@ -88,7 +88,7 @@ class AnalogyProgress:
                 submission.similarities[assignment.student_name] = similarity
                 submission.set_lcs_array(assignment.student_name, c)
                 assignment.similarities[submission.student_name] = similarity
-                assignment.set_lcs_array(submission.student_name, lcs.transpose_c(c))
+                # assignment.set_lcs_array(submission.student_name, lcs.transpose_c(c))
 
                 # Update the file progress bar
                 self.progress_file.configure(value=j+1)

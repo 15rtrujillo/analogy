@@ -1,7 +1,8 @@
 import docx_extract
-import json
+import lcs
 import os
 import shutil
+import struct
 import tkinter.filedialog as tkd
 import zipfile
 
@@ -15,7 +16,7 @@ class Submission:
         self.student_name = student_name
         self.submission_file_path = submission_file_path
         self.similarities: dict[str, float] = dict()
-        self.json_file_path = os.path.abspath(os.path.dirname(self.submission_file_path))
+        self.c_file_path = os.path.abspath(os.path.dirname(self.submission_file_path))
 
     def get_similar_percent(self, student_name: str) -> float:
         """Get the similarity between this submission and the provided one
@@ -25,16 +26,33 @@ class Submission:
         return self.similarities[student_name]
     
     def get_lcs_array(self, student_name: str) -> list[list[int]]:
-        json_file_name = os.path.abspath(os.path.join(self.json_file_path, f"{self.student_name}-{student_name}.json"))
-        if not os.path.isfile(json_file_name):
-            raise KeyError(f"{student_name} is not a valid key")
-        with open(json_file_name, "r") as json_file:
-            return json.load(json_file)
+        c_file_name = os.path.abspath(os.path.join(self.c_file_path, f"{self.student_name}-{student_name}.cmp"))
+
+        transpose = False
+        if not os.path.isfile(c_file_name):
+            c_file_name = os.path.abspath(os.path.join(self.c_file_path, f"{student_name}-{self.student_name}.cmp"))
+            transpose = True
+            if not os.path.isfile(c_file_name):
+                raise KeyError(f"{student_name} is not a valid key")
+        
+        with open(c_file_name, "rb") as c_file:
+            c: list[list[int]] = list()
+            rows, cols = struct.unpack("ii", c_file.read(4 * 2))
+            for _ in range(rows):
+                row = struct.unpack("i" * cols, c_file.read(4 * cols))
+                c.append(row)
+            
+            return c if not transpose else lcs.transpose_c(c)
     
     def set_lcs_array(self, student_name: str, c: list[list[int]]):
-        json_file_name = os.path.abspath(os.path.join(self.json_file_path, f"{self.student_name}-{student_name}.json"))
-        with open(json_file_name, "w") as json_file:
-            json.dump(c, json_file)
+        c_file_name = os.path.abspath(os.path.join(self.c_file_path, f"{self.student_name}-{student_name}.cmp"))
+        with open(c_file_name, "wb") as c_file:
+            # Store the dimensions of the array
+            c_file.write(struct.pack("ii", len(c), len(c[0])))
+
+            for row in c:
+                # Pack the row into the file.
+                c_file.write(struct.pack('i' * len(row), *row))
         
 
 def get_submissions_file() -> str:

@@ -76,7 +76,7 @@ def get_diff(c: list[list[int]], string1: str | list[str], string2: str | list[s
         else:
             break
     diff.reverse()
-    return " ".join(diff)
+    return "".join(diff)
 
 
 if __name__ == "__main__":
