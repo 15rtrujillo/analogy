@@ -3,6 +3,7 @@ from typing import Literal
 
 import analogy
 import lcs
+import multiprocessing
 import os
 import tkinter as tk
 import tkinter.messagebox as msgbox
@@ -40,7 +41,7 @@ class AnalogyProgress:
         self.progress_total.grid(row=row, column=0, padx=10, pady=10)
         row += 1
 
-        self.label_file_progress = tk.Label(self.root, text="File Progress: ")
+        self.label_file_progress = tk.Label(self.root, text="Comparing Against Other Students:")
         self.label_file_progress.grid(row=row, column=0)
         row += 1
 
@@ -61,44 +62,69 @@ class AnalogyProgress:
             short_file_name = analogy.get_file_name(file_name)
             self.label_total_progress.configure(text=f"Checking file {i}/{total_files}: {short_file_name}...")
 
-            # Read in the entire contents of a file
-            file_contents = analogy.get_file_contents(file_name)
-
-            # Add the student name and the context of the file to the list
+            # Create the new submission object
             student_name = short_file_name.split("_")[0] 
             submission = analogy.Submission(student_name, file_name)
 
-            if file_contents == "UnicodeDecodeError":
+            # Read in the entire contents of a file to see if it throws an error
+            # I don't know a better way to do this...
+            if analogy.get_file_contents(file_name) == "UnicodeDecodeError":
+                submission.submission_file_path = "UnicodeDecodeError"
                 self.submissions.append(submission)
                 continue
 
             # Compare the file contents with the assignments that have already been read in
             total_submissions = len(self.submissions)
             self.progress_file.configure(maximum=total_submissions)
-            for j in range(total_submissions):
-                assignment = self.submissions[j]
 
-                self.label_file_progress.configure(text=f"Comparing {student_name} and {assignment.student_name}...")
+            manager = multiprocessing.Manager()
+            result_list = manager.list()
+            processes: list[multiprocessing.Process] = list()
 
-                if self.comparison_method == "characters":
-                    similarity, c = lcs.compare_text(file_contents, analogy.get_file_contents(assignment.submission_file_path))
-                elif self.comparison_method == "words":
-                    similarity, c = lcs.compare_words(file_contents, analogy.get_file_contents(assignment.submission_file_path))
+            for cmp_submission in self.submissions:
+                # Start multiprocess comparisons
+                if cmp_submission.submission_file_path == "UnicodeDecodeError":
+                    continue
+                process = multiprocessing.Process(target=compare_process, args=(submission, cmp_submission, self.comparison_method, result_list))
+                # self.label_file_progress.configure(text=f"Comparing {student_name} and {cmp_submission.student_name}...")
+                process.start()
+                processes.append(process)
 
-                submission.similarities[assignment.student_name] = similarity
-                submission.set_lcs_array(assignment.student_name, c)
-                assignment.similarities[submission.student_name] = similarity
-                # assignment.set_lcs_array(submission.student_name, lcs.transpose_c(c))
-
+            # Wait for all the processes to complete
+            j = 0
+            for process in processes:
+                process.join()
                 # Update the file progress bar
                 self.progress_file.configure(value=j+1)
+                j += 1
                 self.root.update()
+
+            # Getting these back from the process creates a NEW object. It is no longer a reference to the original
+            for submission, cmp_student_name, similarity in result_list:
+                for cmpsub in self.submissions:
+                    if cmpsub.student_name == cmp_student_name:
+                        cmp_submission = cmpsub
+                        break
+                cmp_submission.similarities[submission.student_name] = similarity
 
             self.submissions.append(submission)
             self.progress_total.configure(value=i+1)
             self.root.update()
 
         self.root.destroy()
+
+
+def compare_process(sub1: analogy.Submission, sub2: analogy.Submission, comparison_method: Literal["characters", "words"], result_list: list):
+    """Function to compare two submissions. Returns the submissions compared, their similarity percent, and the C array in the result_queue. Used in multiprocessing."""
+    if comparison_method == "characters":
+        similarity, c = lcs.compare_text(analogy.get_file_contents(sub1.submission_file_path), analogy.get_file_contents(sub2.submission_file_path))
+    elif comparison_method == "words":
+        similarity, c = lcs.compare_text(analogy.get_file_contents(sub1.submission_file_path), analogy.get_file_contents(sub2.submission_file_path))
+    
+    sub1.similarities[sub2.student_name] = similarity
+    sub1.set_lcs_array(sub2.student_name, c)
+    
+    result_list.append((sub1, sub2.student_name, similarity))
 
 
 class AnalogyGUI:
