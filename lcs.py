@@ -13,8 +13,8 @@ def compare_text(text1: str, text2: str) -> tuple[float, list[list[int]]]:
 def compare_words(text1: str, text2: str) -> tuple[float, list[list[int]]]:
     """Compares the words in two strings. Returns the similarity as a decimal percent"""
     # Split on whitespace to get "words"
-    words1 = text1.split(" ")
-    words2 = text2.split(" ")
+    words1 = text1.split()
+    words2 = text2.split()
 
     longest, c = lcs(words1, words2)
 
@@ -68,15 +68,15 @@ def get_diff(c: list[list[int]], string1: str | list[str], string2: str | list[s
             i -= 1
             j -= 1
         elif j > 0 and (i == 0 or c[i][j-1] >= c[i-1][j]):
-            diff.append("+" + string2[j])
+            diff.append("@g@" + string2[j] + "@g@")
             j -= 1
         elif i > 0 and (j == 0 or c[i][j-1] < c[i-1][j]):
-            diff.append("-" + string1[i])
+            diff.append("@r@" + string1[i] + "@r@")
             i -= 1
         else:
             break
     diff.reverse()
-    return " ".join(diff)
+    return "".join(diff)
 
 
 if __name__ == "__main__":

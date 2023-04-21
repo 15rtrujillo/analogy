@@ -1,6 +1,7 @@
 from typing import Literal
 
 import lcs
+import re
 import tkinter as tk
 import tkinter.ttk as ttk
 
@@ -54,17 +55,44 @@ class DifferenceWindow:
             string1 = self.submission1_contents
             string2 = self.submission2_contents
         elif comparison_type == "words":
-            string1 = self.submission1_contents.split(" ")
-            string2 = self.submission2_contents.split(" ")
+            string1 = self.submission1_contents.split()
+            string2 = self.submission2_contents.split()
         else:
             raise ValueError
         
         sub1diff = lcs.get_diff(self.submissions_c, string1, string2)
         sub2diff = lcs.get_diff(lcs.transpose_c(self.submissions_c), string2, string1)
-        
-        self.text_submission1.insert("1.0", sub1diff)
-        self.text_submission2.insert("1.0", sub2diff)
+
+        self.add_to_textbox(sub1diff, self.text_submission1)
+        self.add_to_textbox(sub2diff, self.text_submission2)
+
+    def add_to_textbox(self, text: str, textbox: tk.Text):
+        matches = [match for match in re.finditer("[@][g|r][@]", text)]
+        match_num = 0
+        char_index = 0
+        while match_num < len(matches):
+            open_tag = matches[match_num]
+            close_tag = matches[match_num + 1]
+            # Insert everything up to the beginning of the tag
+            text_before_tag = text[char_index:open_tag.start()]
+            textbox.insert("end", text_before_tag)
+
+            # Insert everything between the two tags with the Text tag
+            text_between_tag = text[open_tag.end():close_tag.start()]
+            tag = "green" if "g" in text[open_tag.start():open_tag.end()] else "red"
+            textbox.insert("end", text_between_tag, tag)
+
+            char_index = close_tag.end()
+            match_num += 2
+        # Insert everything else
+        textbox.insert("end", text[char_index:])
+        textbox.tag_configure("green", background="#92fa7d")
+        textbox.tag_configure("red", background="#fa9c7d")
 
 
 if __name__ == "__main__":
-    window = DifferenceWindow(None, "Hi", "Hi", "hi", "hi", list())
+    main_window = tk.Tk()
+    window = DifferenceWindow(main_window, "Hi", "Hi","hi", "hi", list())
+    window.add_to_textbox("H@g@i@g@", window.text_submission1)
+    window.add_to_textbox("H@r@i@r@", window.text_submission2)
+    main_window.mainloop()
