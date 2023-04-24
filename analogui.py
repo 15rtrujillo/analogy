@@ -1,5 +1,6 @@
 from diff_window import DifferenceWindow
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future
 from typing import Literal
 
 import analogy
@@ -9,6 +10,7 @@ import os
 import tkinter as tk
 import tkinter.messagebox as msgbox
 import tkinter.ttk as ttk
+import queue
 
 
 class AnalogyProgress:
@@ -78,34 +80,31 @@ class AnalogyProgress:
             total_submissions = len(self.submissions)
             self.progress_file.configure(maximum=total_submissions)
 
-            with ThreadPoolExecutor() as executor:
-                pass
+            futures: list[Future] = list()
+            # results = queue.Queue()
 
             for cmp_submission in self.submissions:
                 # Start multiprocess comparisons
                 if cmp_submission.submission_file_path == "UnicodeDecodeError":
                     continue
-                process = multiprocessing.Process(target=compare_process, args=(submission, cmp_submission, self.comparison_method, result_list))
-                # self.label_file_progress.configure(text=f"Comparing {student_name} and {cmp_submission.student_name}...")
-                process.start()
-                processes.append(process)
+                with ThreadPoolExecutor() as executor:
+                    future = executor.submit(compare_thread, submission, cmp_submission, self.comparison_method)
+                    futures.append(future)
 
-            # Wait for all the processes to complete
+            # Getting these back from the thread creates a NEW object. It is no longer a reference to the original
             j = 0
-            for process in processes:
-                process.join()
-                # Update the file progress bar
-                self.progress_file.configure(value=j+1)
-                j += 1
-                self.root.update()
-
-            # Getting these back from the process creates a NEW object. It is no longer a reference to the original
-            for submission, cmp_student_name, similarity in result_list:
+            for future in futures:
+                submission, cmp_student_name, similarity = future.result()
                 for cmpsub in self.submissions:
                     if cmpsub.student_name == cmp_student_name:
                         cmp_submission = cmpsub
                         break
                 cmp_submission.similarities[submission.student_name] = similarity
+
+                # Update the file progress bar
+                self.progress_file.configure(value=j+1)
+                j += 1
+                self.root.update()
 
             self.submissions.append(submission)
             self.progress_total.configure(value=i+1)
@@ -114,7 +113,7 @@ class AnalogyProgress:
         self.root.destroy()
 
 
-def compare_process(sub1: analogy.Submission, sub2: analogy.Submission, comparison_method: Literal["characters", "words"], result_list: list):
+def compare_thread(sub1: analogy.Submission, sub2: analogy.Submission, comparison_method: Literal["characters", "words"]):
     """Function to compare two submissions. Returns the submissions compared, their similarity percent, and the C array in the result_queue. Used in multiprocessing."""
     if comparison_method == "characters":
         similarity, c = lcs.compare_text(analogy.get_file_contents(sub1.submission_file_path), analogy.get_file_contents(sub2.submission_file_path))
@@ -124,7 +123,7 @@ def compare_process(sub1: analogy.Submission, sub2: analogy.Submission, comparis
     sub1.similarities[sub2.student_name] = similarity
     sub1.set_lcs_array(sub2.student_name, c)
     
-    result_list.append((sub1, sub2.student_name, similarity))
+    return sub1, sub2.student_name, similarity
 
 
 class AnalogyGUI:
