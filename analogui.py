@@ -80,32 +80,34 @@ class AnalogyProgress:
 
             manager = multiprocessing.Manager()
             result_list = manager.list()
-            processes: list[multiprocessing.Process] = list()
+            processes: list[tuple[str, str, multiprocessing.Process]] = list()
 
             for cmp_submission in self.submissions:
                 # Start multiprocess comparisons
                 if cmp_submission.submission_file_path == "UnicodeDecodeError":
                     continue
                 process = multiprocessing.Process(target=compare_process, args=(submission, cmp_submission, self.comparison_method, result_list))
-                # self.label_file_progress.configure(text=f"Comparing {student_name} and {cmp_submission.student_name}...")
                 process.start()
-                processes.append(process)
+                processes.append((submission.student_name, cmp_submission.student_name, process))
 
             # Wait for all the processes to complete
             j = 0
-            for process in processes:
-                process.join()
+            for student1, student2, process in processes:
+                # Update the label
+                self.label_file_progress.configure(text=f"Comparing {student1} and {student2}...")
                 # Update the file progress bar
                 self.progress_file.configure(value=j+1)
                 j += 1
                 self.root.update()
+                process.join()
 
             # Getting these back from the process creates a NEW object. It is no longer a reference to the original
-            for submission, cmp_student_name, similarity in result_list:
+            for cmp_student_name, similarity in result_list:
                 for cmpsub in self.submissions:
                     if cmpsub.student_name == cmp_student_name:
                         cmp_submission = cmpsub
                         break
+                submission.similarities[cmp_student_name] = similarity
                 cmp_submission.similarities[submission.student_name] = similarity
 
             self.submissions.append(submission)
@@ -122,10 +124,9 @@ def compare_process(sub1: analogy.Submission, sub2: analogy.Submission, comparis
     elif comparison_method == "words":
         similarity, c = lcs.compare_text(analogy.get_file_contents(sub1.submission_file_path), analogy.get_file_contents(sub2.submission_file_path))
     
-    sub1.similarities[sub2.student_name] = similarity
     sub1.set_lcs_array(sub2.student_name, c)
     
-    result_list.append((sub1, sub2.student_name, similarity))
+    result_list.append((sub2.student_name, similarity))
 
 
 class AnalogyGUI:
@@ -311,22 +312,22 @@ class AnalogyGUI:
 
         for submission in self.submissions:
             # Get variables
-            student_file = submission.student_name
+            student_name = submission.student_name
             similarities = submission.similarities
 
             if submission.submission_file_path == "UnicodeDecodeError":
-                self.treeview.insert("", "end", student_file, values=[student_file, "Could not read file contents"])
+                self.treeview.insert("", "end", student_name, values=[student_name, "Could not read file contents"])
             else:
-                self.treeview.insert("", "end", student_file, values=[student_file])
+                self.treeview.insert("", "end", student_name, values=[student_name])
 
             added_child = False
-            for similar_file_name in similarities:
-                if submission.get_similar_percent(similar_file_name) >= percent:
-                    self.treeview.insert(student_file, "end", values=[similar_file_name, f"{round(submission.get_similar_percent(similar_file_name) * 100, 2)}%"])
+            for similar_student_name in similarities:
+                if submission.get_similar_percent(similar_student_name) >= percent:
+                    self.treeview.insert(student_name, "end", values=[similar_student_name, f"{round(submission.get_similar_percent(similar_student_name) * 100, 2)}%"])
                     added_child = True
 
             if not added_child:
-                self.treeview.delete(student_file)
+                self.treeview.delete(student_name)
 
     def display_diff(self, event: tk.Event):
         # Identify the item that was clicked on at the mouse location
