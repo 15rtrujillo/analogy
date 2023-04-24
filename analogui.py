@@ -5,6 +5,7 @@ import analogy
 import lcs
 import multiprocessing
 import os
+import time
 import tkinter as tk
 import tkinter.messagebox as msgbox
 import tkinter.ttk as ttk
@@ -217,6 +218,10 @@ class AnalogyGUI:
         self.treeview.grid(row=row, column=0)
         row += 1
 
+        self.label_results_time = tk.Label(self.root)
+        self.label_results_time.grid(row=row, column=0)
+        row += 1
+
     def show_window(self):
         """Starts the mainloop to display the window"""
         self.root.mainloop()
@@ -277,7 +282,18 @@ class AnalogyGUI:
 
         progress = AnalogyProgress(self.root, self.submissions_directory, self.submission_files, self.comparison_method)
         
+        start_time = time.time_ns()
         progress.compare()
+        end_time = time.time_ns()
+
+        elapsed_time_ns = end_time - start_time
+        elapsed_time_ms = elapsed_time_ns // 1_000_000
+        elapsed_time_s = elapsed_time_ns // 1_000_000_000
+        elapsed_time_min = elapsed_time_s // 60
+        elapsed_time_s %= 60
+        elapsed_time_ms %= 1000
+
+        self.label_results_time.configure(text=f"Results generated in {elapsed_time_min} minutes, {elapsed_time_s} seconds, and {elapsed_time_ms} milliseconds.")
 
         self.submissions = progress.submissions
 
