@@ -15,7 +15,11 @@ class AnalogyProgress:
     """A progress window for the comparison process"""
 
     def __init__(self, parent: tk.Tk, submissions_directory: str, submission_files: list[str], comparison_method: Literal["characters", "words"]):
-        """Create a new progress window"""
+        """Create a new progress window
+        parent: The parent window
+        submissions_directory: The directory containing the submission files
+        submission_files: A list of the submission file paths
+        comparison_method: How we are comparing the files, by characters or "words.\""""
         # Program stuff
         self.submissions_directory = submissions_directory
         self.submission_files = submission_files
@@ -56,32 +60,38 @@ class AnalogyProgress:
         self.root.geometry(f"+{int(parent_mid_x/2)}+{int(parent_mid_y)}")
 
     def compare(self):
+        """Compare all the submissions in self.submissions_directory to populate self.submissions"""
+
+        # Loop through all the submission files and set up the progress bar
         total_files = len(self.submission_files)
         self.progress_total.configure(maximum=total_files)
         for i in range(total_files):
-            file_name = self.submission_files[i]
-            short_file_name = analogy.get_file_name(file_name)
+            file_path = self.submission_files[i]
+            short_file_name = analogy.get_file_name(file_path)
             self.label_total_progress.configure(text=f"Checking file {i}/{total_files}: {short_file_name}...")
 
             # Create the new submission object
             student_name = short_file_name.split("_")[0] 
-            submission = analogy.Submission(student_name, file_name)
+            submission = analogy.Submission(student_name, file_path)
 
             # Read in the entire contents of a file to see if it throws an error
             # I don't know a better way to do this...
-            if analogy.get_file_contents(file_name) == "UnicodeDecodeError":
+            if analogy.get_file_contents(file_path) == "UnicodeDecodeError":
                 submission.submission_file_path = "UnicodeDecodeError"
                 self.submissions.append(submission)
                 continue
 
             # Compare the file contents with the assignments that have already been read in
+            # Also configure the second progress bar
             total_submissions = len(self.submissions)
             self.progress_file.configure(maximum=total_submissions)
 
+            # Set up the objects required for multiprocessing
             manager = multiprocessing.Manager()
             result_list = manager.list()
             processes: list[tuple[str, str, multiprocessing.Process]] = list()
 
+            # Loop through all the submissions that have already been read in
             for cmp_submission in self.submissions:
                 # Start multiprocess comparisons
                 if cmp_submission.submission_file_path == "UnicodeDecodeError":
@@ -101,16 +111,22 @@ class AnalogyProgress:
                 self.root.update()
                 process.join()
 
-            # Getting these back from the process creates a NEW object. It is no longer a reference to the original
+            # Get the results back from the processes
             for cmp_student_name, similarity in result_list:
+                # Look for the submission we were comparing against
                 for cmpsub in self.submissions:
                     if cmpsub.student_name == cmp_student_name:
                         cmp_submission = cmpsub
                         break
+
+                # Set the similarities in the dictionaries
                 submission.similarities[cmp_student_name] = similarity
                 cmp_submission.similarities[submission.student_name] = similarity
 
+            # Add the newely read in submission to the list
             self.submissions.append(submission)
+
+            # Update the progress bar
             self.progress_total.configure(value=i+1)
             self.root.update()
 
@@ -118,14 +134,21 @@ class AnalogyProgress:
 
 
 def compare_process(sub1: analogy.Submission, sub2: analogy.Submission, comparison_method: Literal["characters", "words"], result_list: list):
-    """Function to compare two submissions. Returns the submissions compared, their similarity percent, and the C array in the result_queue. Used in multiprocessing."""
+    """Function to compare two submissions. Returns the name of the second student and the similarity percent between the two submissions. Used in multiprocessing.
+    sub1: The first submission to compare
+    sub2: The second submission to compare
+    comparison_method: How we are comparing the files, by characters or "words."
+    result_list: The list to add our return values to"""
+    # Do the comparison
     if comparison_method == "characters":
         similarity, c = lcs.compare_text(analogy.get_file_contents(sub1.submission_file_path), analogy.get_file_contents(sub2.submission_file_path))
     elif comparison_method == "words":
         similarity, c = lcs.compare_text(analogy.get_file_contents(sub1.submission_file_path), analogy.get_file_contents(sub2.submission_file_path))
     
+    # Write the cmp file with the C array
     sub1.set_lcs_array(sub2.student_name, c)
     
+    # Add the return values to the list so they can be retrieved by the parent process
     result_list.append((sub2.student_name, similarity))
 
 
@@ -214,7 +237,6 @@ class AnalogyGUI:
         self.treeview.column("#0", width=10)
         self.treeview.heading("#1", text="Student Name")
         self.treeview.heading("#2", text="Similarity")
-        # This doesn't work well at all
         self.treeview.bind("<Double-1>", self.display_diff)
         self.treeview.grid(row=row, column=0)
         row += 1
@@ -235,13 +257,17 @@ class AnalogyGUI:
             self.entry_file_select.insert("0", new_file)
 
     def generate_report(self):
+        """Checks all inputs and starts the file comparison"""
+        # Disable the Generate button
         self.button_generate_report.configure(state="disabled")
+
         # Verify that a path has been specified
         if self.entry_file_select.get() == "":
             msgbox.showerror("No File Specified", "Please specify a submissions zip file.")
             self.button_generate_report.configure(state="normal")
             return
         
+        # Verify that we have entered a proper similarity-percent threshold
         try:
             float(self.spinbox_percent.get())
         except ValueError:
@@ -249,6 +275,7 @@ class AnalogyGUI:
             self.button_generate_report.configure(state="normal")
             return
         
+        # If we have not specified a new zip file, or changed the comparison method, we don't need to recompare, we can just change the report displayed in the treeview.
         if self.entry_file_select.get() == self.submissions_file and self.comparison_method == self.comparison_method_radio.get():
             self.button_generate_report.configure(state="normal")
             self.populate_treeview()
@@ -271,7 +298,7 @@ class AnalogyGUI:
             return
         
         # Try to get all the newly-extracted files
-        self.submission_files = analogy.get_assignment_files(self.submissions_directory)
+        self.submission_files = analogy.get_submission_files(self.submissions_directory)
 
         if len(self.submission_files) == 0:
             msgbox.showerror("No Files", "The submissions zip file you provided yielded no contents.")
@@ -279,8 +306,10 @@ class AnalogyGUI:
             self.button_generate_report.configure(state="normal")
             return
         
+        # Take note of the selected comparison method
         self.comparison_method = self.comparison_method_radio.get()
 
+        # Create a progress window and begin doing the comparisons
         progress = AnalogyProgress(self.root, self.submissions_directory, self.submission_files, self.comparison_method)
         
         start_time = time.time_ns()
@@ -303,6 +332,7 @@ class AnalogyGUI:
         self.populate_treeview()
 
     def populate_treeview(self):
+        """Fill the treeview with the relevant information depending on the similarity-percent threshold"""
         # Get percent to check for
         percent = min(1.0, float(self.spinbox_percent.get()) / 100)
 
@@ -315,21 +345,26 @@ class AnalogyGUI:
             student_name = submission.student_name
             similarities = submission.similarities
 
+            # If the submission was illegible, we will skip it
             if submission.submission_file_path == "UnicodeDecodeError":
                 self.treeview.insert("", "end", student_name, values=[student_name, "Could not read file contents"])
+                continue
             else:
                 self.treeview.insert("", "end", student_name, values=[student_name])
 
+            # Loop through the similarities dictionary to add children to the treeview item.
             added_child = False
             for similar_student_name in similarities:
                 if submission.get_similar_percent(similar_student_name) >= percent:
                     self.treeview.insert(student_name, "end", values=[similar_student_name, f"{round(submission.get_similar_percent(similar_student_name) * 100, 2)}%"])
                     added_child = True
 
+            # If we didn't add any children for the parent item, we can just remove it
             if not added_child:
                 self.treeview.delete(student_name)
 
     def display_diff(self, event: tk.Event):
+        """Identify the selected treeview item and display the difference window with the relevant comparison"""
         # Identify the item that was clicked on at the mouse location
         item_id = self.treeview.identify("item", event.x, event.y)
 

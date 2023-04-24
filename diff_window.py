@@ -9,7 +9,15 @@ import tkinter.ttk as ttk
 class DifferenceWindow:
     """A window displaying the differences between two student submissions"""
 
-    def __init__(self, parent: tk.Tk, student1: str, student2: str, submission1_contents: str, submission2_contents: str, submissions_c: list[list[int]]):
+    def __init__(self, parent: tk.Tk, student1: str, student2: str, 
+    submission1_contents: str, submission2_contents: str, submissions_c: list[list[int]]):
+        """Create a window that displays the differences between two submissions
+        parent: The parent window
+        student1: The name of the first student
+        student2: The name of the second student
+        submission1_contents: The contents of the first submission
+        submission2_contents: The contents of the second submission
+        submissions_c: The C array comparing the two submissions"""
         # Program stuff
         self.student1 = student1
         self.student2 = student2
@@ -49,9 +57,9 @@ class DifferenceWindow:
         self.text_submission2.grid(row=2, column=1)
 
     def display_diff(self, comparison_type: Literal["characters", "words"]):
+        """Display the differences between the two submissions in the text boxes
+        comparison_type: The method used for comparing the texts"""
         if comparison_type == "characters":
-            # string1 = "".join(self.submission1_contents.split())
-            # string2 = "".join(self.submission2_contents.split())
             string1 = self.submission1_contents
             string2 = self.submission2_contents
         elif comparison_type == "words":
@@ -67,7 +75,13 @@ class DifferenceWindow:
         self.add_to_textbox(sub2diff, self.text_submission2)
 
     def add_to_textbox(self, text: str, textbox: tk.Text):
+        """Add the text to the textbox while searching for tags and highlighting differences in the text
+        test: The text to add to the box
+        textbox: The textbox to add the text to"""
+        # Get all the matches from the text for the highlight tags
         matches = [match for match in re.finditer("[@][g|r][@]", text)]
+
+        # Loop through all the matches and apply the tkinter tags to the text
         match_num = 0
         char_index = 0
         while match_num < len(matches):
@@ -84,8 +98,11 @@ class DifferenceWindow:
 
             char_index = close_tag.end()
             match_num += 2
+
         # Insert everything else
         textbox.insert("end", text[char_index:])
+
+        # Highlight the tags
         textbox.tag_configure("green", background="#92fa7d")
         textbox.tag_configure("red", background="#fa9c7d")
 

@@ -1,5 +1,5 @@
 def compare_text(text1: str, text2: str) -> tuple[float, list[list[int]]]:
-    """Compares two strings. Returns the similarity as a decimal percent"""
+    """Compares two strings. Returns the similarity as a decimal percent and the C array"""
 
     # Strip whitespace
     #text1 = "".join(text1.split())
@@ -11,7 +11,7 @@ def compare_text(text1: str, text2: str) -> tuple[float, list[list[int]]]:
 
 
 def compare_words(text1: str, text2: str) -> tuple[float, list[list[int]]]:
-    """Compares the words in two strings. Returns the similarity as a decimal percent"""
+    """Compares the words in two strings. Returns the similarity as a decimal percent and the C array"""
     # Split on whitespace to get "words"
     words1 = text1.split()
     words2 = text2.split()
@@ -46,6 +46,7 @@ def lcs(string1: str | list[str], string2: str | list[str]) -> tuple[int, list[l
 
 
 def transpose_c(c: list[list[int]]) -> list[list[int]]:
+    """Transpose a C array so that it can be used to relate the differences in reverse"""
     x = len(c[0])
     y = len(c)
 
@@ -59,6 +60,10 @@ def transpose_c(c: list[list[int]]) -> list[list[int]]:
 
 
 def get_diff(c: list[list[int]], string1: str | list[str], string2: str | list[str]) -> str:
+    """Generate a string containing the differences between the two strings using the C array
+    c: The c array belonging to the two strings
+    string1: The first string that was compared
+    string2: The second string that was compared"""
     i = len(string1) - 1
     j = len(string2) - 1
     diff: list[str] = list()

@@ -82,7 +82,7 @@ def extract_files(zip_file_path) -> str:
         return ""
     
 
-def get_assignment_files(path_to_assignments: str) -> list[str]:
+def get_submission_files(path_to_assignments: str) -> list[str]:
     """Grab all the recently-extracted assignment files in the directory"""
     assignment_files: list[str] = list()
     for root, _, files in os.walk(path_to_assignments):
