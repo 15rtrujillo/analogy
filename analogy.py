@@ -12,7 +12,11 @@ ASSIGNMENT_CONTENTS = 1
 SIMILARITIES = 2
 
 class Submission:
+    """Information about a student's submission"""
     def __init__(self, student_name: str, submission_file_path: str):
+        """Create a student submission
+        student_name: The name of the student
+        submission_file_path: The path to the student's submission"""
         self.student_name = student_name
         self.submission_file_path = submission_file_path
         self.similarities: dict[str, float] = dict()
@@ -26,8 +30,10 @@ class Submission:
         return self.similarities[student_name]
     
     def get_lcs_array(self, student_name: str) -> list[list[int]]:
+        """Get the array comparing this student and the student provided"""
         c_file_name = os.path.abspath(os.path.join(self.c_file_path, f"{self.student_name}-{student_name}.cmp"))
 
+        # If we can't find the file, then we need to search with the names reversed and transpose the C array.
         transpose = False
         if not os.path.isfile(c_file_name):
             c_file_name = os.path.abspath(os.path.join(self.c_file_path, f"{student_name}-{self.student_name}.cmp"))
@@ -37,7 +43,9 @@ class Submission:
         
         with open(c_file_name, "rb") as c_file:
             c: list[list[int]] = list()
+            # Read in the first two ushorts to determine the rows and columns of the 2D array
             rows, cols = struct.unpack("HH", c_file.read(2 * 2))
+            # Reconstruct the C array
             for _ in range(rows):
                 row = struct.unpack("H" * cols, c_file.read(2 * cols))
                 c.append(row)
@@ -45,6 +53,7 @@ class Submission:
             return c if not transpose else lcs.transpose_c(c)
     
     def set_lcs_array(self, student_name: str, c: list[list[int]]):
+        """Create a file containing the comparison array between this student and the provided student"""
         c_file_name = os.path.abspath(os.path.join(self.c_file_path, f"{self.student_name}-{student_name}.cmp"))
         with open(c_file_name, "wb") as c_file:
             # Store the dimensions of the array
@@ -113,7 +122,7 @@ def get_file_contents(path_to_file: str) -> str:
 
 
 def remove_directory(directory: str):
-    # Try to remove the folder we created earlier
+    """Try to remove a directory and its contents"""
     try:
         shutil.rmtree(directory)
     except Exception as e:
