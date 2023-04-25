@@ -71,8 +71,8 @@ class DifferenceWindow:
         sub1diff = lcs.get_diff(self.submissions_c, string1, string2)
         sub2diff = lcs.get_diff(lcs.transpose_c(self.submissions_c), string2, string1)
 
-        self.add_to_textbox(sub1diff, self.text_submission1)
-        self.add_to_textbox(sub2diff, self.text_submission2)
+        self.add_to_textbox(sub1diff, self.text_submission2)
+        self.add_to_textbox(sub2diff, self.text_submission1)
 
     def add_to_textbox(self, text: str, textbox: tk.Text):
         """Add the text to the textbox while searching for tags and highlighting differences in the text
